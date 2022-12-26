@@ -1,0 +1,23 @@
+return function()
+    local ScriptModule = require(script.Parent)
+    local NodeModule = require(script.Parent.Parent.Node)
+
+    describe("Callback test", function()
+        it("Callback attach",function()
+            local _Script = ScriptModule()
+            _Script:AttachCallback("Pointer", function() end)
+        end)
+
+        it("Callback fire", function()
+            local _Script = ScriptModule()
+            _Script:AttachNode(NodeModule("Test1"))
+            _Script:AttachNode(NodeModule("Test2"))
+            _Script:SetPointer("Test1")
+            _Script:AttachCallback("Pointer", function()
+                _Script:RemoveNode("Test1")
+            end)
+            _Script:SetPointer("Test2")
+            expect(_Script:GetNode("Test1")).never.be.ok()
+        end)
+    end)
+end

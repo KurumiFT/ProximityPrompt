@@ -4,9 +4,9 @@
     "$className": "DataModel",
 
     "ReplicatedStorage": {
-      "Common": {
-        "$path": "src/shared"
-      }
+        "ProximityPrompt":{
+          "$path": "src/shared"
+        }
     },
 
     "ServerScriptService": {
