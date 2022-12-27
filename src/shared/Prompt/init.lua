@@ -1,6 +1,8 @@
 local Prompt = {}
 
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Player = game.Players.LocalPlayer
 local CurrentCamera = workspace.CurrentCamera
@@ -9,12 +11,30 @@ local UI_Folder = script.Parent.UI
 local Single_Frame = UI_Folder.Single
 local Radial_Frame = UI_Folder.Radial
 
+local TweenInfos = { -- Maybe later in another module with tween presets
+    Appear = TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0),
+    Disappear = TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
+}
 
 local function Constructor()
     local self = {}
 
     setmetatable(self, {__index = Prompt})
     return self
+end
+
+local function getTableKeys(tab)
+    local Keys = {}
+    for _, v in pairs(tab) do
+        table.insert(Keys, _)
+    end
+
+    return Keys
+end
+
+local function WorldToScreenPoint(position)
+    local vector, onSreen = CurrentCamera:WorldToScreenPoint(position)
+    return vector
 end
 
 function Prompt:SetScript(script)
@@ -35,6 +55,54 @@ function Prompt:GetNodeRenderType()
     if #self.script.ptr.choices == 0 then return end
     if #self.script.ptr.choices == 1 then return "Single" end
     return "Radial"
+end
+
+function Prompt:UserInput(input_object: InputObject)
+    if not self.render_data then return end
+    local RenderType = self:GetNodeRenderType()
+    assert(RenderType, "No script or no pointer")
+
+    if input_object.UserInputType == Enum.UserInputType.Keyboard then
+        if input_object.KeyCode ~= Enum.KeyCode.E then return end
+        if RenderType ~= "Single" then return end
+        if input_object.UserInputState == Enum.UserInputState.Begin then
+            local Choice = getTableKeys(self.render_data)[1]
+            local ChoiceData = self.render_data[Choice]
+            if ChoiceData.choice.duration == 0 then
+                self.script:ProceedAction(ChoiceData.choice)
+                return
+            end
+
+            local TInfo = TweenInfo.new(ChoiceData.choice.duration, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
+            local Tween = TweenService:Create(Choice.Progress, TInfo, {Size = UDim2.new(1, 0, 1, 0)})
+            Tween:Play()
+            local TimeConnection
+            local CurrentHold = tick()
+            self.last_hold = CurrentHold
+            TimeConnection = RunService.Heartbeat:Connect(function(deltaTime) -- Holding check connection
+                if not self.render_data then TimeConnection:Disconnect(); return end
+                if self.last_hold ~= CurrentHold then 
+                    if not Choice or not Choice.Parent then
+                        TimeConnection:Disconnect()
+                        return
+                    end
+                    local TInfo = TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
+                    local Tween = TweenService:Create(Choice.Progress, TInfo, {Size = UDim2.new(0, 0, 1, 0)})
+                    Tween:Play()
+                    TimeConnection:Disconnect()
+                    return
+                end
+
+                if tick() >= CurrentHold + ChoiceData.choice.duration then
+                    self.script:ProceedAction(ChoiceData.choice)
+                    TimeConnection:Disconnect()
+                    return
+                end
+            end)
+        else
+            self.last_hold = nil
+        end        
+    end
 end
 
 function Prompt:GetRenderFrame()
@@ -78,13 +146,46 @@ function Prompt:Unrender()
     if self.render_connection then
         self.render_connection:Disconnect()
     end
+
+    self.script:RemoveCallback("Pointer")
+
+    self:HideCurrent()
+end
+
+function Prompt:HideCurrent()
+    if self.render_data and self.screen_gui then
+        local TempScreenUI = Instance.new('ScreenGui', Player.PlayerGui)
+        TempScreenUI.Name = "DebrisProximityPrompt"
+
+        for frame, data in pairs(self.render_data) do
+            local _frame = frame:Clone()
+            _frame.Parent = TempScreenUI
+            local DisappearTween = TweenService:Create(_frame, TweenInfos.Disappear, {Size = UDim2.new(0, 0, 0 ,0)})
+            DisappearTween:Play()
+            Debris:AddItem(_frame, TweenInfos.Disappear.Time)
+        end
+
+        Debris:AddItem(TempScreenUI, TweenInfos.Disappear.Time)
+    end
+
+    if self.screen_gui then
+        self.screen_gui:Destroy()
+        self.screen_gui = nil
+    end
+
+    self.render_data = nil
 end
 
 function Prompt:Render()
     assert(self.script, "No script")
     assert(self.script.default, "No default node in script")
+    assert(self.object, "No target object")
     self.script:SetPointer(self.script.default) -- Set pointer to default 
     assert(self:GetNodeRenderType(), "No choices in node")
+    self.script:AttachCallback("Pointer", function()
+        self:HideCurrent()
+    end)
+
     self.render_connection = RunService.Heartbeat:Connect(function(deltaTime)
         if not self.screen_gui then -- Render prompt
             self.screen_gui = Instance.new("ScreenGui", Player.PlayerGui)
@@ -93,7 +194,17 @@ function Prompt:Render()
             self.render_data = self:GetRenderFrame()
             for frame, data in pairs(self.render_data) do
                 frame.Parent = self.screen_gui
+
+                local TargetSize = frame.Size
+                frame.Size = UDim2.new(0, 0, 0, 0)
+                local AppearTween = TweenService:Create(frame, TweenInfos.Appear, {Size = TargetSize})
+                AppearTween:Play()
             end
+        end
+
+        local ScreenPoint = WorldToScreenPoint(self.object.Position)
+        for frame, data in pairs(self.render_data) do
+            frame.Position = UDim2.new(0, (ScreenPoint.X - frame.AbsoluteSize.X / 2) + data.offset.X.Offset, 0, (ScreenPoint.Y - frame.AbsoluteSize.Y / 2) + data.offset.Y.Offset)
         end
     end)
 end

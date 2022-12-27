@@ -41,5 +41,16 @@ return function ()
             _Script:SetDefault(_Node1.name)
             expect(_Script.default).to.equal(_Node1.name)
         end)
+
+        it("proceed redirect", function()
+            local _Script = ScriptModule()
+            local _Node1 = NodeModule("Test1");_Script:AttachNode(_Node1)
+            local _Node2 = NodeModule("Test2");_Script:AttachNode(_Node2)
+           local _Choice = _Node1:NewChoice("Test")
+           _Choice:SetRedirect(_Node2.name)
+            _Script:ProceedAction(_Choice)
+
+            expect(_Script.ptr).to.equal(_Node2)
+        end)
     end)
 end

@@ -22,7 +22,14 @@ end
 function Script:AttachCallback(name: string, callback)
     assert(self.callbacks[name], "This callback doesnt exist")
 
-    table.insert(self.connections, self.callbacks[name].Event:Connect(callback))
+    self.connections[name] = self.callbacks[name].Event:Connect(callback)
+end
+
+function Script:RemoveCallback(name: string)
+    if self.connections[name] then
+        self.connections[name]:Disconnect()
+        self.connections[name] = nil
+    end
 end
 
 function Script:RemoveNode(name: string)
@@ -33,6 +40,12 @@ end
 
 function Script:SetDefault(name: string)
     self.default = name
+end
+
+function Script:ProceedAction(choice)
+    if choice.redirect then
+        self:SetPointer(choice.redirect) 
+    end
 end
 
 function Script:SetPointer(name: string)

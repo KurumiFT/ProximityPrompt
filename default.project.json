@@ -27,6 +27,11 @@
       "$properties": {
         "FilteringEnabled": true
       },
+
+      "TestPart": {
+        "$path": "src/TestPart.rbxmx"
+      },
+
       "Baseplate": {
         "$className": "Part",
         "$properties": {

@@ -4,7 +4,9 @@ return function ()
     describe("Constructor test", function()
 
         it("__call", function()
-            PromptModule()
+            expect(function()
+               PromptModule() 
+            end).never.to.throw()
         end)
 
         it("return table", function()

@@ -12,14 +12,15 @@ return function()
     end
 
     describe("Base render logic test", function()
-        local _Prompt
+        local _Prompt,_Script
 
         beforeEach(function()
             _Prompt = PromptModule()
+            _Prompt:SetObject(workspace.TestPart)
+            _Script = ScriptModule()
         end)
 
         it("set script", function()
-            local _Script = ScriptModule()
             _Prompt:SetScript(_Script)
             expect(_Prompt.script).to.equal(_Script)
         end)
@@ -41,7 +42,6 @@ return function()
         end)
 
         it("render without default node", function()
-            local _Script = ScriptModule()
             _Prompt:SetScript(_Script)
             expect(function()
                 _Prompt:Render()
@@ -49,11 +49,17 @@ return function()
         end)
 
         it("render without choices in node", function()
-            local _Script = ScriptModule()
             local _Node = NodeModule("Test")
             _Script:AttachNode(_Node)
             _Script:SetDefault(_Node.name)
             _Prompt:SetScript(_Script)
+            expect(function()
+                _Prompt:Render()
+            end).to.throw()
+        end)
+
+        it("render without target object", function()
+            _Prompt:SetObject(nil)
             expect(function()
                 _Prompt:Render()
             end).to.throw()
@@ -70,12 +76,13 @@ return function()
 
         beforeEach(function()
             _Prompt = PromptModule()
+            _Prompt:SetObject(workspace.TestPart)
             _Script = ScriptModule()
             _SingleNode = NodeModule("Single")    
-            _SingleNode:NewChoice("Test")
+            _SingleNode:NewChoice("Test", 0)
             _RadialNode = NodeModule("Radial")    
-            _RadialNode:NewChoice("Test")
-            _RadialNode:NewChoice("Test")
+            _RadialNode:NewChoice("Test", 0)
+            _RadialNode:NewChoice("Test", 0)
             _Script:AttachNode(_SingleNode)
             _Script:AttachNode(_RadialNode)
             _Script:SetDefault(_SingleNode.name)
@@ -110,6 +117,89 @@ return function()
 
             stepsWait(2)
             expect(#_Prompt.screen_gui:GetChildren() > 0).to.be.ok()
+        end)
+
+        it("unrender delete screen gui / game", function()
+            _Prompt:Render()
+
+            stepsWait(2)
+            _Prompt:Unrender()
+            expect(_Prompt.screen_gui).never.to.be.ok()
+        end)
+    end)
+
+    describe("Input test", function()
+        local _Prompt, _Script, _SingleNode, _RadialNode, _Choice
+
+        beforeEach(function()
+            _Prompt = PromptModule()
+            _Prompt:SetObject(workspace.TestPart)
+            _Script = ScriptModule()
+            _SingleNode = NodeModule("Single")    
+            local _Choice = _SingleNode:NewChoice("Test", 0)
+            _Choice:SetRedirect("Radial")
+            _RadialNode = NodeModule("Radial")    
+            _RadialNode:NewChoice("Test", 0)
+            _RadialNode:NewChoice("Test", 0)
+            _Script:AttachNode(_SingleNode)
+            _Script:AttachNode(_RadialNode)
+            _Script:SetDefault(_SingleNode.name)
+            _Prompt:SetScript(_Script)
+        end)
+
+        afterEach(function()
+            _Prompt:Unrender()
+        end)
+
+        it("press e / proceed single action without holding", function()
+            _Prompt:Render()
+
+            stepsWait(2)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Keyboard, KeyCode = Enum.KeyCode.E, UserInputState = Enum.UserInputState.Begin}
+             _Prompt:UserInput(fakeInputObject)
+             expect(_Prompt.script.ptr).to.equal(_RadialNode)    
+        end)
+
+        it("press e / proceed single action with holding", function()
+            local _SingleDNode = NodeModule("SingleDuration")    
+            local _Choice = _SingleDNode:NewChoice("Test", .01)
+            _Script:AttachNode(_SingleDNode)
+            _Script:SetDefault(_SingleDNode.name)
+            _Choice:SetRedirect("Radial")
+            _Prompt:Render()
+
+            stepsWait(2)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Keyboard, KeyCode = Enum.KeyCode.E, UserInputState = Enum.UserInputState.Begin}
+
+            _Prompt:UserInput(fakeInputObject)
+
+            stepsWait(2)
+
+            expect(_Prompt.script.ptr).to.equal(_RadialNode)
+        end)
+
+        it("press e / cancel single action with holding", function()
+            local _SingleDNode = NodeModule("SingleDuration")    
+            local _Choice = _SingleDNode:NewChoice("Test", 3)
+            _Script:AttachNode(_SingleDNode)
+            _Script:SetDefault(_SingleDNode.name)
+            _Choice:SetRedirect("Radial")
+            _Prompt:Render()
+
+            stepsWait(2)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Keyboard, KeyCode = Enum.KeyCode.E, UserInputState = Enum.UserInputState.Begin}
+
+            _Prompt:UserInput(fakeInputObject)
+
+            stepsWait(2)
+
+            fakeInputObject.UserInputState = Enum.UserInputState.End
+            _Prompt:UserInput(fakeInputObject)
+
+            expect(_Prompt.script.ptr).to.equal(_SingleDNode)
         end)
     end)
 end
