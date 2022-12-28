@@ -23,6 +23,19 @@ local function Constructor()
     return self
 end
 
+local function checkOnFrame(position: Vector3, frame) -- Check 2D position over frame
+	if not frame then return end
+	if not ((position.X >= frame.AbsolutePosition.X) and (position.X <= frame.AbsolutePosition.X + frame.AbsoluteSize.X)) then
+		return false
+	end
+
+	if not ((position.Y >= frame.AbsolutePosition.Y) and (position.Y <= frame.AbsolutePosition.Y + frame.AbsoluteSize.Y)) then
+		return false
+	end
+	
+	return true
+end
+
 local function getTableKeys(tab)
     local Keys = {}
     for _, v in pairs(tab) do
@@ -45,6 +58,40 @@ function Prompt:SetObject(obj: Part)
     self.object = obj
 end
 
+function Prompt:inputOnChoice(choice, choice_data)
+    if choice_data.choice.duration == 0 then
+        self.script:ProceedAction(choice_data.choice)
+        return
+    end
+
+    local TInfo = TweenInfo.new(choice_data.choice.duration, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
+    local Tween = TweenService:Create(choice.Progress, TInfo, {Size = UDim2.new(1, 0, 1, 0)})
+    Tween:Play()
+    local TimeConnection
+    local CurrentHold = tick()
+    self.last_hold = CurrentHold
+    TimeConnection = RunService.Heartbeat:Connect(function(deltaTime) -- Holding check connection
+        if not self.render_data then TimeConnection:Disconnect(); return end
+        if self.last_hold ~= CurrentHold then 
+            if not choice or not choice.Parent then
+                TimeConnection:Disconnect()
+                return
+            end
+            local TInfo = TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
+             local Tween = TweenService:Create(choice.Progress, TInfo, {Size = UDim2.new(0, 0, 1, 0)})
+            Tween:Play()
+            TimeConnection:Disconnect()
+            return
+        end
+
+        if tick() >= CurrentHold + choice_data.choice.duration then
+            self.script:ProceedAction(choice_data.choice)
+            TimeConnection:Disconnect()
+            return
+        end
+    end)   
+end
+
 function Prompt:SetDistance(distance: number)
     self.distance = distance
 end
@@ -65,43 +112,31 @@ function Prompt:UserInput(input_object: InputObject)
     if input_object.UserInputType == Enum.UserInputType.Keyboard then
         if input_object.KeyCode ~= Enum.KeyCode.E then return end
         if RenderType ~= "Single" then return end
-        if input_object.UserInputState == Enum.UserInputState.Begin then
-            local Choice = getTableKeys(self.render_data)[1]
-            local ChoiceData = self.render_data[Choice]
-            if ChoiceData.choice.duration == 0 then
-                self.script:ProceedAction(ChoiceData.choice)
-                return
+
+        if input_object.UserInputState == Enum.UserInputState.End then self.last_hold = nil; return end 
+
+        local Choice = getTableKeys(self.render_data)[1]
+        local ChoiceData = self.render_data[Choice]
+        
+        self:inputOnChoice(Choice, ChoiceData)
+        return
+    end
+
+    if input_object.UserInputType == Enum.UserInputType.Touch or input_object.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input_object.UserInputState == Enum.UserInputState.End then self.last_hold = nil; return end
+
+        local Choice, ChoiceData
+        for frame, data in pairs(self.render_data) do
+            if checkOnFrame(input_object.Position, frame) then
+                Choice = frame
+                ChoiceData = data
+                break
             end
+        end
 
-            local TInfo = TweenInfo.new(ChoiceData.choice.duration, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
-            local Tween = TweenService:Create(Choice.Progress, TInfo, {Size = UDim2.new(1, 0, 1, 0)})
-            Tween:Play()
-            local TimeConnection
-            local CurrentHold = tick()
-            self.last_hold = CurrentHold
-            TimeConnection = RunService.Heartbeat:Connect(function(deltaTime) -- Holding check connection
-                if not self.render_data then TimeConnection:Disconnect(); return end
-                if self.last_hold ~= CurrentHold then 
-                    if not Choice or not Choice.Parent then
-                        TimeConnection:Disconnect()
-                        return
-                    end
-                    local TInfo = TweenInfo.new(.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0)
-                    local Tween = TweenService:Create(Choice.Progress, TInfo, {Size = UDim2.new(0, 0, 1, 0)})
-                    Tween:Play()
-                    TimeConnection:Disconnect()
-                    return
-                end
-
-                if tick() >= CurrentHold + ChoiceData.choice.duration then
-                    self.script:ProceedAction(ChoiceData.choice)
-                    TimeConnection:Disconnect()
-                    return
-                end
-            end)
-        else
-            self.last_hold = nil
-        end        
+        if not Choice then return end 
+        self:inputOnChoice(Choice, ChoiceData)
+        return
     end
 end
 

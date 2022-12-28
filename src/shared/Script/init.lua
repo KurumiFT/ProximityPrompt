@@ -45,6 +45,8 @@ end
 function Script:ProceedAction(choice)
     if choice.redirect then
         self:SetPointer(choice.redirect) 
+    else
+        self:SetPointer(choice.default) 
     end
 end
 

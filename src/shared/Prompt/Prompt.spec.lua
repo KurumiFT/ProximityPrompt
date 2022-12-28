@@ -5,6 +5,13 @@ return function()
     local ScriptModule = require(script.Parent.Parent.Script)
     local NodeModule = require(script.Parent.Parent.Node)
 
+    local CurrentCamera = workspace.CurrentCamera
+
+    local function WorldToScreenPoint(position)
+        local vector, onSreen = CurrentCamera:WorldToScreenPoint(position)
+        return vector
+    end
+
     local function stepsWait(count: number)
         for i = 1, count do
             RunService.Heartbeat:Wait()
@@ -128,7 +135,7 @@ return function()
         end)
     end)
 
-    describe("Input test", function()
+    describe("Input test // test in game", function()
         local _Prompt, _Script, _SingleNode, _RadialNode, _Choice
 
         beforeEach(function()
@@ -196,6 +203,56 @@ return function()
 
             stepsWait(2)
 
+            fakeInputObject.UserInputState = Enum.UserInputState.End
+            _Prompt:UserInput(fakeInputObject)
+
+            expect(_Prompt.script.ptr).to.equal(_SingleDNode)
+        end)
+
+        it("touch frame / proceed single action without holding", function()
+            _Prompt:Render()
+            stepsWait(10)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Touch, Position = WorldToScreenPoint(workspace.TestPart.Position), UserInputState = Enum.UserInputState.Begin}
+            _Prompt:UserInput(fakeInputObject)
+
+            stepsWait(2)
+
+            expect(_Prompt.script.ptr).to.equal(_RadialNode)
+        end)
+
+        it("touch frame / proceed single action with holding", function()
+            local _SingleDNode = NodeModule("SingleDuration")    
+            local _Choice = _SingleDNode:NewChoice("Test", .05)
+            _Script:AttachNode(_SingleDNode)
+            _Script:SetDefault(_SingleDNode.name)
+            _Choice:SetRedirect("Radial")
+            _Prompt:Render()
+            stepsWait(10)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Touch, Position = WorldToScreenPoint(workspace.TestPart.Position), UserInputState = Enum.UserInputState.Begin}
+            _Prompt:UserInput(fakeInputObject)
+
+            stepsWait(8)
+            fakeInputObject.UserInputState = Enum.UserInputState.End
+            _Prompt:UserInput(fakeInputObject)
+
+            expect(_Prompt.script.ptr).to.equal(_RadialNode)
+        end)
+
+        it("touch frame / cancel single action with holding", function()
+            local _SingleDNode = NodeModule("SingleDuration")    
+            local _Choice = _SingleDNode:NewChoice("Test", .3)
+            _Script:AttachNode(_SingleDNode)
+            _Script:SetDefault(_SingleDNode.name)
+            _Choice:SetRedirect("Radial")
+            _Prompt:Render()
+            stepsWait(10)
+
+            local fakeInputObject = {UserInputType = Enum.UserInputType.Touch, Position = WorldToScreenPoint(workspace.TestPart.Position), UserInputState = Enum.UserInputState.Begin}
+            _Prompt:UserInput(fakeInputObject)
+
+            stepsWait(2)
             fakeInputObject.UserInputState = Enum.UserInputState.End
             _Prompt:UserInput(fakeInputObject)
 
