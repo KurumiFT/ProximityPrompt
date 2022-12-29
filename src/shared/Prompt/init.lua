@@ -51,7 +51,18 @@ local function WorldToScreenPoint(position)
 end
 
 function Prompt:SetScript(script)
-    self.script = script    
+    if self.script then
+        self:HideCurrent()
+        self.script:RemoveCallback("Action")
+        self.script:RemoveCallback("Pointer")
+    end
+
+    self.script = script  
+    self.script:AttachCallback('Action', function(action)
+        if self.router then
+            self.router.route(self.object, action)
+        end
+    end)
 end
 
 function Prompt:SetObject(obj: Part)

@@ -10,15 +10,15 @@
     },
 
     "ServerScriptService": {
-      "Server": {
+      "ExampleProximityPrompt": {
         "$path": "src/server"
       }
     },
 
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Client": {
-          "$path": "src/client"
+        "ClientProximityPrompt": {
+          "$path": "src/ClientProximityPrompt"
         }
       }
     },

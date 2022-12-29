@@ -60,7 +60,7 @@ function Script:ProceedAction(choice)
     end
 
     spawn(function()
-        self.callbacks['Action']:Invoke(choice.action)
+        self.callbacks['Action']:Invoke(choice.action) 
     end)
 end
 

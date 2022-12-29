@@ -23,6 +23,14 @@ local function CharacterPosition()
     return Player.Character.HumanoidRootPart.Position
 end
 
+function Handler:SetRouter(router)
+    self.router = router
+
+    for _, prompt in pairs(self.prompts) do -- Update router in every prompt
+        prompt.router = router
+    end
+ end
+
 function Handler:GetByObject(object: BasePart)
     for _, v in pairs(self.prompts) do
         if v.object == object then return v end
@@ -33,6 +41,7 @@ function Handler:AddPrompt(prompt)
     assert(prompt.object, "This prompt hasnt 'object' field")
     assert(prompt.distance, "This prompt hasnt 'distance' field")
 
+    prompt.router = self.router
     table.insert(self.prompts, prompt)
 end
 

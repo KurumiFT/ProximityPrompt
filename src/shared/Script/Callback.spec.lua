@@ -61,5 +61,28 @@ return function()
 
             _Script:ProceedAction(_TestChoice)            
         end)
+
+        it("callback function remove", function()
+            local _Script = ScriptModule()
+            local _Node = NodeModule("Test1")
+            local _TestChoice = _Node:NewChoice("Test")
+            _TestChoice:SetAction("TestAction")
+            _TestChoice:SetRedirect("Test2")
+            _Script:AttachNode(_Node)
+            _Script:AttachNode(NodeModule("Test2"))
+            _Script:SetPointer("Test1")
+            _Script:AttachCallback("Action", function(action)
+                if action == "TestAction" then
+                    _Script:RemoveNode("Test1")
+                end
+            end)
+
+            _Script:RemoveCallback("Action")
+            _Script:ProceedAction(_TestChoice)            
+
+            stepsWait(2)
+
+            expect(_Script:GetNode("Test1")).to.be.ok()
+        end)
     end)
 end

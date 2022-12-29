@@ -12,7 +12,7 @@ return function ()
         end
     end
 
-    describe("Add prompt", function()
+    describe("Prompt test", function()
         local _Prompt, _Script, _SingleNode, _RadialNode, _Handler
 
         beforeEach(function()
@@ -36,6 +36,11 @@ return function ()
 
         afterEach(function()
             _Handler:Monitoring(false)
+        end)
+
+        it("set router", function()
+            _Handler:SetRouter("test") -- please don't set string in Router, it waits module
+            expect(_Handler.router).to.equal("test")
         end)
 
         it("add prompt", function()
