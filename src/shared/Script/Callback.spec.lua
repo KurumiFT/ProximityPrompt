@@ -1,6 +1,14 @@
 return function()
+    local RunService = game:GetService('RunService')
+
     local ScriptModule = require(script.Parent)
     local NodeModule = require(script.Parent.Parent.Node)
+
+    local function stepsWait(count: number)
+        for _=1, count do
+            RunService.Heartbeat:Wait()
+        end
+    end
 
     describe("Callback test", function()
         it("Callback attach",function()
@@ -32,6 +40,26 @@ return function()
             _Script:RemoveCallback("Pointer")
             _Script:SetPointer("Test2")
             expect(_Script:GetNode("Test1")).to.be.ok()
+        end)
+
+        it("callback function invoke", function()
+            local _Script = ScriptModule()
+            local _Node = NodeModule("Test1")
+            local _TestChoice = _Node:NewChoice("Test")
+            _TestChoice:SetAction("TestAction")
+            _TestChoice:SetRedirect("Test2")
+            _Script:AttachNode(_Node)
+            _Script:AttachNode(NodeModule("Test2"))
+            _Script:SetPointer("Test1")
+            _Script:AttachCallback("Action", function(action)
+                if action == "TestAction" then
+                    _Script:RemoveNode("Test1")
+
+                    expect(_Script:GetNode("Test1")).never.be.ok()
+                end
+            end)
+
+            _Script:ProceedAction(_TestChoice)            
         end)
     end)
 end

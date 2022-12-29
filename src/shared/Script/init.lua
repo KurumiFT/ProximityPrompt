@@ -3,7 +3,7 @@ local Script = {}
 local function Constructor()
     local self = {}
     self.nodes = {}
-    self.callbacks = {Pointer = Instance.new('BindableEvent')}
+    self.callbacks = {Pointer = Instance.new('BindableEvent'), Action = Instance.new("BindableFunction")}
     self.connections = {}
     setmetatable(self, {__index = Script})
     return self
@@ -22,13 +22,23 @@ end
 function Script:AttachCallback(name: string, callback)
     assert(self.callbacks[name], "This callback doesnt exist")
 
-    self.connections[name] = self.callbacks[name].Event:Connect(callback)
+    if self.callbacks[name]:IsA("BindableEvent") then
+        self.connections[name] = self.callbacks[name].Event:Connect(callback) 
+    elseif self.callbacks[name]:IsA("BindableFunction") then
+        self.callbacks[name].OnInvoke = callback
+    end
 end
 
 function Script:RemoveCallback(name: string)
-    if self.connections[name] then
-        self.connections[name]:Disconnect()
-        self.connections[name] = nil
+    if self.callbacks[name] then
+        if self.callbacks[name]:IsA("BindableEvent") then
+            if self.connections[name] then
+                self.connections[name]:Disconnect()     
+            end
+            self.connections[name] = nil
+        elseif self.callbacks[name]:IsA("BindableFunction") then
+            self.callbacks[name].OnInvoke = nil
+        end
     end
 end
 
@@ -46,8 +56,12 @@ function Script:ProceedAction(choice)
     if choice.redirect then
         self:SetPointer(choice.redirect) 
     else
-        self:SetPointer(choice.default) 
+        self:SetPointer(self.default) 
     end
+
+    spawn(function()
+        self.callbacks['Action']:Invoke(choice.action)
+    end)
 end
 
 function Script:SetPointer(name: string)

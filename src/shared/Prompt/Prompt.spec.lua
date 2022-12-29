@@ -21,6 +21,10 @@ return function()
     describe("Base render logic test", function()
         local _Prompt,_Script
 
+        afterEach(function()
+            _Prompt:Unrender()
+        end)
+
         beforeEach(function()
             _Prompt = PromptModule()
             _Prompt:SetObject(workspace.TestPart)
